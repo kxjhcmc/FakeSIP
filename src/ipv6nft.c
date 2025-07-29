@@ -110,30 +110,18 @@ int fs_nft6_setup(void)
         */
         "        icmp type time-exceeded counter drop;\n"
         /*
-            exclude special IPv6 addresses (from source)
+            exclude non-GUA IPv6 addresses (from source)
         */
-        "        ip6 saddr ::/127         return;\n"
-        "        ip6 saddr ::ffff:0:0/96  return;\n"
-        "        ip6 saddr 64:ff9b::/96   return;\n"
-        "        ip6 saddr 64:ff9b:1::/48 return;\n"
-        "        ip6 saddr 2002::/16      return;\n"
-        "        ip6 saddr fc00::/7       return;\n"
-        "        ip6 saddr fe80::/10      return;\n"
+        "        ip6 saddr != 2000::/3 return;\n"
         "    }\n"
         "\n"
         "    chain fs_postrouting {\n"
         "        type filter hook postrouting priority mangle - 5;\n"
         "        policy accept;\n"
         /*
-            exclude special IPv6 addresses (to destination)
+            exclude non-GUA IPv6 addresses (to destination)
         */
-        "        ip6 daddr ::/127         return;\n"
-        "        ip6 daddr ::ffff:0:0/96  return;\n"
-        "        ip6 daddr 64:ff9b::/96   return;\n"
-        "        ip6 daddr 64:ff9b:1::/48 return;\n"
-        "        ip6 daddr 2002::/16      return;\n"
-        "        ip6 daddr fc00::/7       return;\n"
-        "        ip6 daddr fe80::/10      return;\n"
+        "        ip6 daddr != 2000::/3 return;\n"
         "    }\n"
         "\n"
         "    chain fs_rules {\n"

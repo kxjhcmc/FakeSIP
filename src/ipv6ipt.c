@@ -111,52 +111,16 @@ int fs_ipt6_setup(void)
          "--icmp-type", "11", "-j", "DROP", NULL},
 
         /*
-            exclude special IPv6 addresses (from source)
+            exclude non-GUA IPv6 addresses (from source)
         */
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s", "::/127",
-         "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "::ffff:0:0/96", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "64:ff9b::/96", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "64:ff9b:1::/48", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "2002::/16", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "fc00::/7", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "-s",
-         "fe80::/10", "-j", "RETURN", NULL},
+        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_S", "!", "-s",
+         "2000::/3", "-j", "RETURN", NULL},
 
         /*
-            exclude special IPv6 addresses (to destination)
+            exclude non-GUA IPv6 addresses (to destination)
         */
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d", "::/127",
-         "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "::ffff:0:0/96", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "64:ff9b::/96", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "64:ff9b:1::/48", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "2002::/16", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "fc00::/7", "-j", "RETURN", NULL},
-
-        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "-d",
-         "fe80::/10", "-j", "RETURN", NULL},
+        {"ip6tables", "-w", "-t", "mangle", "-A", "FAKESIP_D", "!", "-d",
+         "2000::/3", "-j", "RETURN", NULL},
 
         /*
             exclude marked packets
