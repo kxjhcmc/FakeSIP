@@ -47,7 +47,9 @@ static uint8_t *payload = NULL;
 static size_t payload_len = 0;
 static int sockfd = -1;
 static int sock4fd = -1;
+static int sock4if = -1;
 static int sock6fd = -1;
+static int sock6if = -1;
 
 void fs_rawsend_cleanup(void);
 
@@ -108,49 +110,81 @@ invalid:
 }
 
 
-static int sendto_snat(struct sockaddr_ll *sll, struct sockaddr *daddr,
-                       uint8_t *pkt_buff, int pkt_len)
+static int bind_iface(int fd, int ifindex)
 {
+    static int use_bindtoifindex = 1;
+
     int res;
-    ssize_t nbytes;
     char *iface, iface_buf[IF_NAMESIZE];
 
-    iface = if_indextoname(sll->sll_ifindex, iface_buf);
+    if (use_bindtoifindex) {
+        res = setsockopt(fd, SOL_SOCKET, SO_BINDTOIFINDEX, &ifindex,
+                         sizeof(ifindex));
+        if (res < 0 && errno == ENOPROTOOPT) {
+            use_bindtoifindex = 0;
+        } else if (res < 0) {
+            E("ERROR: setsockopt(): SO_BINDTOIFINDEX: %s", strerror(errno));
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    iface = if_indextoname(ifindex, iface_buf);
     if (!iface) {
         E("ERROR: if_indextoname(): %s", strerror(errno));
         return -1;
     }
 
-    if (daddr->sa_family == AF_INET) {
-        res = setsockopt(sock4fd, SOL_SOCKET, SO_BINDTODEVICE, iface,
-                         strlen(iface));
-        if (res < 0) {
-            E("ERROR: setsockopt(): SO_BINDTODEVICE: %s", strerror(errno));
-            return -1;
-        }
+    res = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, iface, strlen(iface));
+    if (res < 0) {
+        E("ERROR: setsockopt(): SO_BINDTODEVICE: %s", strerror(errno));
+        return -1;
+    }
 
-        nbytes = sendto(sock4fd, pkt_buff, pkt_len, 0, daddr,
-                        sizeof(struct sockaddr_in));
-        if (nbytes < 0 && errno != EPERM) {
-            E("ERROR: sendto(): %s", strerror(errno));
-            return -1;
+    return 0;
+}
+
+
+static int sendto_snat(struct sockaddr_ll *sll, struct sockaddr *daddr,
+                       uint8_t *pkt_buff, int pkt_len)
+{
+    int res, fd;
+    size_t daddrlen;
+    ssize_t nbytes;
+
+    if (daddr->sa_family == AF_INET) {
+        daddrlen = sizeof(struct sockaddr_in);
+        fd = sock4fd;
+
+        if (sll->sll_ifindex != sock4if) {
+            res = bind_iface(fd, sll->sll_ifindex);
+            if (res < 0) {
+                E(T(bind_iface));
+                return -1;
+            }
+            sock4if = sll->sll_ifindex;
         }
     } else if (daddr->sa_family == AF_INET6) {
-        res = setsockopt(sock6fd, SOL_SOCKET, SO_BINDTODEVICE, iface,
-                         strlen(iface));
-        if (res < 0) {
-            E("ERROR: setsockopt(): SO_BINDTODEVICE: %s", strerror(errno));
-            return -1;
-        }
+        daddrlen = sizeof(struct sockaddr_in6);
+        fd = sock6fd;
 
-        nbytes = sendto(sock6fd, pkt_buff, pkt_len, 0, daddr,
-                        sizeof(struct sockaddr_in6));
-        if (nbytes < 0 && errno != EPERM) {
-            E("ERROR: sendto(): %s", strerror(errno));
-            return -1;
+        if (sll->sll_ifindex != sock6if) {
+            res = bind_iface(fd, sll->sll_ifindex);
+            if (res < 0) {
+                E(T(bind_iface));
+                return -1;
+            }
+            sock6if = sll->sll_ifindex;
         }
     } else {
         E("ERROR: Unknown sa_family: %d", (int) daddr->sa_family);
+        return -1;
+    }
+
+    nbytes = sendto(fd, pkt_buff, pkt_len, 0, daddr, daddrlen);
+    if (nbytes < 0 && errno != EPERM) {
+        E("ERROR: sendto(): %s", strerror(errno));
         return -1;
     }
 
